@@ -121,7 +121,7 @@ def label_scores(label_lists: List[Dict]) -> List[int]:
   return scores
 
 def find_minimum_set(options: Dict[str, List[Dict]]) -> List[str]:
-  dimension_mins = defaultdict(lambda: float('inf'))
+  dimension_mins = defaultdict(int)
   min_counts = defaultdict(int)
 
   opt_scores = {}
@@ -151,20 +151,36 @@ def find_minimum_set(options: Dict[str, List[Dict]]) -> List[str]:
       for i, value in enumerate(scores):
         if value == dimension_mins[i]:
           covered_dimensions.add(i)
-                    
-  uncovered_dimensions = set(dimension_mins.keys()) - covered_dimensions
 
-  # If there are uncovered dimensions, add the necessary actions to cover them
-  if uncovered_dimensions:
+  uncovered_dimensions = set(dimension_mins.keys()) - covered_dimensions
+  while uncovered_dimensions:
+    max_cover_opts = set()
+    max_cover_count = 0
     for opt, scores in opt_scores.items():
-      for i in list(uncovered_dimensions): # Create a list from the set to safely modify it
+      if opt in min_set:
+        continue
+      cover_count = 0
+      for i in uncovered_dimensions:
         if scores[i] == dimension_mins[i]:
-          min_set.add(opt)
-          uncovered_dimensions.remove(i)
-          if not uncovered_dimensions:
-            break
-      if not uncovered_dimensions:
-        break
+          cover_count += 1
+        
+      if cover_count > max_cover_count:
+        max_cover_count = cover_count
+        max_cover_opts = set([opt])
+      elif cover_count == max_cover_count:
+        max_cover_opts.add(opt)
+
+    if max_cover_count == 1:
+      # If max cover is just 1, don't add all options so that not to clutter output,
+      # pick just one.
+      max_cover_opts = set(list(max_cover_opts)[:1])
+
+    for opt in max_cover_opts:
+      min_set.add(opt)
+      for i, i_min in dimension_mins.items():
+        if opt_scores[opt][i] == i_min:
+          if i in uncovered_dimensions:
+            uncovered_dimensions.remove(i)
                 
   return list(min_set)
 
