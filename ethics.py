@@ -375,6 +375,13 @@ Should You Tell Your Friend if Her Husband is Cheating?
 if __name__ == "__main__":
   ethics_evaluation_of_situation("cheating", cheating_situation)
 
+alzheimer_situation = """
+If an Alzheimer's patient asks about a loved one, and that loved one is deceased, finding out about their death all over again can cause them pain. Because of that, some family members will lie to spare their loved one's feelings. Is it ever compassionate to withhold information from your loved one with Alzheimer's?
+"""
+
+if __name__ == "__main__":
+  ethics_evaluation_of_situation("alzheimer", alzheimer_situation)
+
 def print_options_and_scores_v1(situation_key: str):
   file = f"cache_situation_to_options_{situation_key}.json"
   opts, evals = None, None
