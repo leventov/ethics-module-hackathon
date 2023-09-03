@@ -28,7 +28,7 @@ except KeyError:
   exit(1)
 
 @cache_in_file
-def situation_to_options(situation: str) -> List:
+def situation_to_options(situation: str) -> List[str]:
   prompt = """ :: write me options what can be done in this situation? Be creative, 
   generate diverse options, exploring the full range of possible approaches, even unlikely ones."""
   
@@ -63,7 +63,10 @@ def situation_to_options(situation: str) -> List:
       ],
       temperature=0)
   print(response)
-  return json.loads(response["choices"][0]["message"]["content"])["options"]
+  opts = json.loads(response["choices"][0]["message"]["content"])["options"]
+  opts = [opt["option"] + ": " + opt["description"] for opt in opts]
+  opts.append("Do nothing")
+  return opts
 
 def option_to_prediction(situation: str, option: str) -> str:
   prompt = f"predict one most realistic option of what may happen in this situation: '{situation}' after the following action is taken: {option}. Be real, don't indulge in wishful thinking."
@@ -80,10 +83,10 @@ def option_to_prediction(situation: str, option: str) -> str:
   return situation + " :: " + option + " :: " + prediction
 
 @cache_in_file
-def options_to_predictions(situation: str, options: List) -> List:
+def options_to_predictions(situation: str, options: List[str]) -> List:
   predictions = []
   for opt in options:
-    predictions.append(option_to_prediction(situation, opt["option"]))
+    predictions.append(option_to_prediction(situation, opt))
   return predictions
 
 def prediction_to_evaluation(prediction: str, eval_prompt: str) -> Dict:
@@ -121,7 +124,7 @@ def label_scores(label_lists: List[Dict]) -> List[int]:
   return scores
 
 def find_minimum_set(options: Dict[str, List[Dict]]) -> List[str]:
-  dimension_mins = defaultdict(int)
+  dimension_mins = defaultdict(lambda: float('inf'))
   min_counts = defaultdict(int)
 
   opt_scores = {}
@@ -353,8 +356,48 @@ def ethics_evaluation_of_situation(situation_key: str, situation: str):
     print(opt)
     print("liberty: {}, loyalty: {}, fairness: {}, harm: {}".format(*label_scores(options[opt])))
 
-situation = '''Should a teenager using Snapchat, Instagram,
+social_media_situation = '''Should a teenager using Snapchat, Instagram,
 or TikTok have their social media use monitored?
 '''
+if __name__ == "__main__":
+  ethics_evaluation_of_situation("social_media", social_media_situation)
 
-ethics_evaluation_of_situation("social_media", situation)
+cheating_situation = """
+Imagine you and Sarah have been friends for 15 years, ever since you both joined the college debate team. Your friendship has seen you both through ups and downs: breakups, job changes, and even geographical relocations. Sarah married Tom 5 years ago, and you were her maid of honor. You've always thought Tom was a great guy, involved in his community, and a supportive spouse to Sarah. They have a 3-year-old son, Timmy, and from all outward appearances, they seem like the ideal family.
+
+The Situation
+Three weeks ago, you saw Tom at a cozy restaurant downtown while you were having a dinner date with your own partner. Tom was not alone; he was having an intimate dinner with a woman who was definitely not Sarah. They were holding hands across the table, and at one point, they shared a lingering kiss. Your heart sank. You took discreet photographs just in case you needed proof later on.
+
+After the dinner, you started noticing other things that seemed off. Tom has been unusually absent from social events that he would normally attend with Sarah. When you bring this up casually to Sarah, she makes excuses for him, saying that he's been overloaded with work recently.
+
+Should You Tell Your Friend if Her Husband is Cheating?
+"""
+if __name__ == "__main__":
+  ethics_evaluation_of_situation("cheating", cheating_situation)
+
+def print_options_and_scores_v1(situation_key: str):
+  file = f"cache_situation_to_options_{situation_key}.json"
+  opts, evals = None, None
+  with open(file, 'r') as f:
+    opts = json.load(f)
+    opts = [opt["option"] for opt in opts]
+  evals = {}
+  for dim in ["liberty", "loyalty", "fairness", "harm"]:
+    file = f"cache_predictions_to_evaluations_{situation_key}__{dim}.json"
+    with open(file, 'r') as f:
+      evals[dim] = json.load(f)
+  
+  for opt in opts:
+    scores = []
+    for dim in ["liberty", "loyalty", "fairness", "harm"]:
+      for k, v in evals[dim].items():
+        if opt in k:
+          score = 0
+          for lv in v["labels"].values():
+            if lv == 1:
+              score += 1
+          scores.append(score)
+          break
+    print('"{}"\t{}\t{}\t{}\t{}'.format(opt, *scores))
+
+  
